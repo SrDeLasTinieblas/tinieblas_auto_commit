@@ -40,9 +40,24 @@
     "@types/vscode": "^1.95.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "eslint": "^9.13.0"
+    "vsce": "^2.15.0"
   },
   "dependencies": {
-    "axios": "^1.7.9"
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@release-it/conventional-changelog": "^9.0.3",
+    "@rollup/plugin-alias": "^5.1.1",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-multi-entry": "^6.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "abortcontroller-polyfill": "^1.7.6",
+    "auto-changelog": "^2.5.0",
+    "axios": "^1.7.9",
+    "body-parser": "^1.20.3",
+    "coveralls": "^3.1.1"
   }
 }
