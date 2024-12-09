@@ -1,0 +1,48 @@
+{
+  "name": "tinieblasautocommit",
+  "displayName": "auto_commit",
+  "description": "es una extension para hacer commit con IA",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tinieblasautocommit.autoCommit",
+        "title": "Auto Commit"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "mi-extension.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key to use for generating commit messages."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "pnpm run lint",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.95.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.13.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.9"
+  }
+}
