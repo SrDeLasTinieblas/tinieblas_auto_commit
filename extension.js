@@ -122,7 +122,7 @@ async function generateDetailedCommitMessage(changes) {
 
         // Generate short message
         const emoji = getEmojiForChangeType(primaryChangeType);
-        const shortMessage = `${emoji} ${changeCategory}: ${focusFiles.join(' y ')}`;
+        const shortMessage = `${emoji} ${changeCategory}: ${focusFiles.join(', ')}`;
 
         // Generate detailed message
         const detailedMessage = await generateDetailedDescription(changes, focusFiles, changeCategory);
