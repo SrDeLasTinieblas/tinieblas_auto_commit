@@ -1,8 +1,10 @@
 {
   "name": "tinieblasautocommit",
-  "displayName": "auto_commit",
-  "description": "es una extension para hacer commit con IA",
-  "version": "0.0.1",
+  "displayName": "Auto Commit AI",
+  "publisher": "Tinieblas",
+  "description": "Una extensión de Visual Studio Code que utiliza inteligencia artificial para generar automáticamente mensajes de commit. Simplifica el proceso de commit al generar descripciones precisas y relevantes para tus cambios de código, mejorando la productividad y consistencia en tu flujo de trabajo de desarrollo.",
+  "version": "1.0.1",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -21,10 +23,10 @@
     "configuration": {
       "type": "object",
       "properties": {
-        "mi-extension.apiKey": {
+        "tinieblasautocommit.apiKey": {
           "type": "string",
-          "default": "",
-          "description": "API key to use for generating commit messages."
+          "default": "xxx-xxx-xxx",
+          "description": "Clave API para autenticar y usar el servicio de inteligencia artificial de Gemini para generar mensajes de confirmación. Puede obtener su clave API de la plataforma Gemini y pegarla aquí para habilitar la generación automática de mensajes de confirmación en función de los cambios en su código."
         }
       }
     }
@@ -32,32 +34,19 @@
   "scripts": {
     "lint": "eslint .",
     "pretest": "pnpm run lint",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
     "@types/vscode": "^1.95.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "vsce": "^2.15.0"
+    "@vscode/vsce": "^2.15.0",
+    "eslint": "^8.56.0"
   },
   "dependencies": {
-    "@babel/core": "^7.26.0",
-    "@babel/preset-env": "^7.26.0",
-    "@commitlint/cli": "^19.6.0",
-    "@commitlint/config-conventional": "^19.6.0",
-    "@release-it/conventional-changelog": "^9.0.3",
-    "@rollup/plugin-alias": "^5.1.1",
-    "@rollup/plugin-babel": "^6.0.4",
-    "@rollup/plugin-commonjs": "^28.0.1",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-multi-entry": "^6.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.0",
-    "abortcontroller-polyfill": "^1.7.6",
-    "auto-changelog": "^2.5.0",
     "axios": "^1.7.9",
-    "body-parser": "^1.20.3",
-    "coveralls": "^3.1.1"
+    "globals": "^15.13.0"
   }
 }

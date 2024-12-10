@@ -1,65 +1,46 @@
-# tinieblasautocommit README
+# Auto Commit: Asistente de Commits con IA
 
-This is the README for your extension "tinieblasautocommit". After writing up a brief description, we recommend including the following sections.
+- Una extensión de Visual Studio Code que revoluciona tu flujo de trabajo de control de versiones mediante la generación automática de mensajes de commit utilizando inteligencia artificial.
 
-## Features
+## 🚀 Características
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Mensajes de Commit Inteligentes**: Genera automáticamente descripciones precisas y contextuales de tus cambios.
+- **Integración Transparente con Git**: Detecta y commitea cambios con un solo comando.
+- **Análisis Detallado de Cambios**: Identifica archivos añadidos, modificados y eliminados.
+- **Configuración Personalizable**: Configurable con tu propia clave API de IA.
 
-For example if there is an image subfolder under your extension project workspace:
+## 🛠 Configuración Rápida
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Instala la extensión en **Visual Studio Code**.
+2. Configura tu clave API en la configuración de VS Code:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+   ```json
+   "tinieblasautocommit.apiKey": "tu-clave-api"
+    ```
 
-## Requirements
+## 💡 Cómo Funciona
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- La extensión realiza un análisis inteligente de tus cambios:
 
-## Extension Settings
+- Escanea el repositorio Git en busca de modificaciones.
+- Categoriza archivos añadidos, modificados y eliminados.
+- Genera un mensaje de commit conciso y descriptivo mediante inteligencia artificial.
+- Prepara y commitea automáticamente tus cambios.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## 🔒 Requisitos de API
 
-For example:
+- Necesitarás una clave API del servicio Gemini AI. Recuerda mantener tu clave confidencial y no compartirla públicamente.
 
-This extension contributes the following settings:
+## ⚡ Uso
+- Abre tu proyecto en Visual Studio Code.
+- Realiza tus cambios en el código.
+- Presiona ctrl + shift + p
+- Ejecuta el comando de Auto Commit.
+- Observa cómo la IA genera un mensaje de commit perfecto.
+- Simplifica tu flujo de trabajo con Git y céntrate más en programar.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## 📦 Beneficios
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- Ahorra tiempo en la escritura de mensajes de commit.
+- Mantén un historial de commits consistente y descriptivo.
+- Reduce la carga cognitiva asociada con la documentación de cambios.
