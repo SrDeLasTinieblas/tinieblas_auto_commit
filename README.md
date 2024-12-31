@@ -12,10 +12,10 @@
 ## 🛠 Configuración Rápida
 
 1. Instala la extensión en **Visual Studio Code**.
-2. Configura tu clave API en la configuración de VS Code:
+2. Configura tu clave API en la configuración de VS Code (archivos > preferencias > configuracion):
 
    ```json
-   "tinieblasautocommit.apiKey": "tu-clave-api"
+   "tinieblasautocommit.apiKey": "tu-clave-api-gemini"
     ```
 
 ## 💡 Cómo Funciona
