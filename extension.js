@@ -147,7 +147,6 @@ function parseDiff(diff) {
     return changes.join('\n');
 }
 
-// Rest of the helper functions remain unchanged...
 function deactivate() {}
 
 function runGitCommand(command, cwd) {
