@@ -4,7 +4,7 @@ const axios = require('axios');
 const path = require('path');
 
 function activate(context) {
-    console.log('Activating Auto Commit Extension...');
+    // console.log('Activating Auto Commit Extension...');
 
     let disposable = vscode.commands.registerCommand('tinieblasautocommit.autoCommit', async () => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
