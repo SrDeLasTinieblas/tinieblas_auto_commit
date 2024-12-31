@@ -16,7 +16,7 @@ function activate(context) {
 
         try {
             const gitStatus = await runGitCommand('git status --porcelain', workspacePath);
-            console.log("gitStatus: " + gitStatus);  // Muestra la salida del git status
+            // console.log("gitStatus: " + gitStatus);
 
             if (!gitStatus) {
                 vscode.window.showErrorMessage('No git repository detected.');
@@ -29,10 +29,11 @@ function activate(context) {
                 return;
             }
 
-            const { shortMessage, detailedMessage } = await generateDetailedCommitMessage(changes);
+            // Get diffs BEFORE adding files to staging
+            const diffs = await getDiffsForModifiedFiles(changes.modified, workspacePath);
+            const { shortMessage, detailedMessage } = await generateDetailedCommitMessage(changes, diffs);
 
-            // console.log('Mensaje de commit:', shortMessage, detailedMessage);  // Muestra los mensajes generados
-
+            // Now add files and commit
             await runGitCommand(`git add .`, workspacePath);
             await runGitCommand(`git commit -m "${shortMessage}" -m "${detailedMessage}"`, workspacePath);
 
@@ -45,9 +46,111 @@ function activate(context) {
     context.subscriptions.push(disposable);
 }
 
+async function getDiffsForModifiedFiles(modifiedFiles, cwd) {
+    const diffs = {};
+    for (const file of modifiedFiles) {
+        try {
+            const diffOutput = await runGitCommand(`git diff -- "${file}"`, cwd);
+            console.log(`Diff for ${file}:\n${diffOutput}`);
+            diffs[file] = diffOutput;
+        } catch (error) {
+            console.error(`Error fetching diff for ${file}: ${error}`);
+            diffs[file] = 'Error obtaining diff';
+        }
+    }
+    return diffs;
+}
+
+async function generateDetailedCommitMessage(changes, diffs) {
+    try {
+        const apiKey = vscode.workspace.getConfiguration().get('tinieblasautocommit.apiKey');
+        if (!apiKey) {
+            vscode.window.showErrorMessage('Please configure your API key in the extension settings.');
+            return { shortMessage: 'Project update', detailedMessage: 'General project changes.' };
+        }
+
+        const allChangedFiles = [...changes.added, ...changes.modified, ...changes.deleted];
+        const changeTypes = [
+            ...changes.added.map(() => 'add'),
+            ...changes.modified.map(() => 'update'),
+            ...changes.deleted.map(() => 'remove')
+        ];
+        
+        const primaryChangeType = getMostFrequentChangeType(changeTypes);
+        const focusFiles = getMostSignificantFiles(allChangedFiles);
+        const changeCategory = getChangeCategory(focusFiles);
+        const emoji = getEmojiForChangeType(primaryChangeType);
+        
+        const shortMessage = `${emoji} ${changeCategory}: ${focusFiles.join(', ')}`;
+
+        // Create a detailed analysis of changes for the API
+        const changeAnalysis = Object.entries(diffs).map(([file, diff]) => {
+            const changes = parseDiff(diff);
+            return `File: ${file}\nChanges:\n${changes}`;
+        }).join('\n\n');
+
+        const promptText = `Analiza estos cambios de código y genera un resumen conciso explicando el propósito de cada modificación:
+
+            ${changeAnalysis}
+
+            Por favor:
+            1. Explica el propósito de cada cambio
+            2. Sé específico pero conciso
+            3. Usa lenguaje técnico apropiado
+            4. Agrupa cambios relacionados`;
+
+        // console.log("Prompt enviado a la API:", promptText);
+
+        // Generate AI explanation for changes
+        const aiResponse = await axios.post(
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + apiKey,
+            {
+                contents: [{
+                    parts: [{
+                        text: promptText
+                    }]
+                }]
+            }
+        );
+
+        const aiExplanation = aiResponse.data.candidates[0].content.parts[0].text.trim();
+        const detailedMessage = `${aiExplanation}\n\nDetalles técnicos:\n${changes.modified.map(file => 
+            `### ${file}\n\`\`\`diff\n${diffs[file]}\n\`\`\``
+        ).join('\n')}`;
+
+        return {
+            shortMessage: shortMessage.slice(0, 72),
+            detailedMessage
+        };
+    } catch (error) {
+        console.error('Commit message generation error:', error);
+        return {
+            shortMessage: '🛠️ Project update',
+            detailedMessage: 'General project modifications were made.'
+        };
+    }
+}
+
+function parseDiff(diff) {
+    const lines = diff.split('\n');
+    let changes = [];
+    let currentHunk = [];
+
+    for (const line of lines) {
+        if (line.startsWith('+') && !line.startsWith('++')) {
+            changes.push(`Añadido: ${line.substring(1).trim()}`);
+        } else if (line.startsWith('-') && !line.startsWith('--')) {
+            changes.push(`Eliminado: ${line.substring(1).trim()}`);
+        }
+    }
+
+    return changes.join('\n');
+}
+
+// Rest of the helper functions remain unchanged...
 function deactivate() {}
 
-async function runGitCommand(command, cwd) {
+function runGitCommand(command, cwd) {
     return new Promise((resolve, reject) => {
         child_process.exec(command, { cwd }, (error, stdout, stderr) => {
             if (error) {
@@ -71,8 +174,8 @@ function classifyChanges(status) {
     };
 
     status.split('\n').forEach(line => {
-        const changeType = line.slice(0, 2).trim(); // Los dos primeros caracteres, eliminando espacios
-        const filePath = line.slice(3);           // El resto es el nombre del archivo
+        const changeType = line.slice(0, 2).trim();
+        const filePath = line.slice(3);
 
         if (changeType === 'A') {
             changes.added.push(filePath);
@@ -83,85 +186,16 @@ function classifyChanges(status) {
         }
     });
 
-    // console.log('Clasificación de cambios:', changes);  // Muestra cómo se están clasificando los cambios
     return changes;
 }
 
-async function getDiffsForModifiedFiles(modifiedFiles, cwd) {
-    const diffs = {};
-    for (const file of modifiedFiles) {
-        const diffCommand = `git diff -- ${file}`;
-        try {
-            const diffOutput = await runGitCommand(diffCommand, cwd);
-            diffs[file] = diffOutput;
-        } catch (error) {
-            console.error(`Error fetching diff for ${file}: ${error}`);
-            diffs[file] = 'Error obteniendo diff';
-        }
-    }
-    return diffs;
-}
-
-
-async function generateDetailedCommitMessage(changes, workspacePath) {
-    try {
-        const diffs = await getDiffsForModifiedFiles(changes.modified, workspacePath);
-        
-        const apiKey = vscode.workspace.getConfiguration().get('tinieblasautocommit.apiKey');
-        if (!apiKey) {
-            vscode.window.showErrorMessage('Por favor, configura tu clave API en la configuración de la extensión.');
-            return { shortMessage: 'Actualización de proyecto', detailedMessage: 'Cambios generales en el proyecto.' };
-        }
-
-        const allChangedFiles = [
-            ...changes.added,
-            ...changes.modified,
-            ...changes.deleted
-        ];
-
-        const changeTypes = [
-            ...changes.added.map(() => 'add'),
-            ...changes.modified.map(() => 'update'),
-            ...changes.deleted.map(() => 'remove')
-        ];
-        const primaryChangeType = getMostFrequentChangeType(changeTypes);
-
-        const focusFiles = getMostSignificantFiles(allChangedFiles);
-        const changeCategory = getChangeCategory(focusFiles);
-        const emoji = getEmojiForChangeType(primaryChangeType);
-        const shortMessage = `${emoji} ${changeCategory}: ${focusFiles.join(', ')}`;
-
-        const diffSummary = changes.modified.map(file => 
-            `### ${file}\n\`\`\`diff\n${diffs[file]}\n\`\`\``
-        ).join('\n');
-
-        console.log('Resumen de cambios:', diffSummary);  // Muestra el resumen de los cambios
-
-        const detailedMessage = `Cambios detallados:\n${diffSummary}\n\nCategoría: ${changeCategory}`;
-
-        return {
-            shortMessage: shortMessage.slice(0, 72),
-            detailedMessage: detailedMessage
-        };
-    } catch (error) {
-        console.error('Commit message generation error:', error);
-        return {
-            shortMessage: '🛠️ Actualización de proyecto',
-            detailedMessage: 'Se realizaron modificaciones generales en el proyecto.'
-        };
-    }
-}
-
-
 function getMostSignificantFiles(files) {
-    // Filter out common, less interesting files
     const significantFiles = files.filter(file => 
         !file.includes('node_modules/') && 
         !file.includes('.lock') && 
         !file.includes('.log')
     );
-
-    // Sort by perceived significance (shorter paths, certain extensions)
+    
     const prioritizedFiles = significantFiles.sort((a, b) => {
         const priorityExtensions = ['.py', '.js', '.ts', '.json', '.yml', '.yaml', '.gitignore'];
         
@@ -177,19 +211,18 @@ function getMostSignificantFiles(files) {
         return a.length - b.length;
     });
 
-    // Return top 2-3 files, or all if fewer
     return prioritizedFiles.slice(0, 3).map(file => path.basename(file));
 }
 
 function getChangeCategory(files) {
     const fileTypes = files.map(file => path.extname(file).replace('.', ''));
     
-    if (fileTypes.includes('gitignore')) return 'Configuración';
-    if (fileTypes.includes('py')) return 'Mejora';
-    if (fileTypes.includes('js') || fileTypes.includes('ts')) return 'Desarrollo';
-    if (fileTypes.includes('json')) return 'Configuración';
+    if (fileTypes.includes('gitignore')) return 'Configuration';
+    if (fileTypes.includes('py')) return 'Enhancement';
+    if (fileTypes.includes('js') || fileTypes.includes('ts')) return 'Development';
+    if (fileTypes.includes('json')) return 'Configuration';
     
-    return 'Actualización';
+    return 'Update';
 }
 
 function getMostFrequentChangeType(types) {
@@ -206,41 +239,6 @@ function getEmojiForChangeType(type) {
         case 'update': return '🔧';
         case 'remove': return '🗑️';
         default: return '💡';
-    }
-}
-
-async function generateDetailedDescription(changes, focusFiles, changeCategory) {
-    try {
-        const apiKey = vscode.workspace.getConfiguration().get('tinieblasautocommit.apiKey');
-        
-        const response = await axios.post(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + apiKey,
-            {
-                contents: [{
-                    parts: [{
-                        text: `Genera una descripción de commit detallada pero concisa en español, explicando los cambios en los siguientes archivos:
-                        - Archivos añadidos: ${changes.added.join(', ')}
-                        - Archivos modificados: ${changes.modified.join(', ')}
-                        - Archivos eliminados: ${changes.deleted.join(', ')}
-
-                        Archivos principales: ${focusFiles.join(', ')}
-                        Categoría de cambio: ${changeCategory}
-
-                        La descripción debe:
-                        - Ser clara y profesional
-                        - Explicar el propósito de los cambios
-                        - Mostrar el impacto en el proyecto
-                        - Tener un máximo de 3-4 líneas`
-                    }]
-                }]
-            }
-        );
-
-        const generatedDescription = response.data.candidates[0].content.parts[0].text.trim();
-        return generatedDescription;
-    } catch (error) {
-        console.error('Detailed description generation error:', error);
-        return `Se han realizado ${changeCategory.toLowerCase()} en los archivos ${focusFiles.join(' y ')}. Estos cambios mejoran la funcionalidad y eficiencia del proyecto.`;
     }
 }
 
