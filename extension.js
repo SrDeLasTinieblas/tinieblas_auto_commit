@@ -16,7 +16,6 @@ function activate(context) {
 
         try {
             const gitStatus = await runGitCommand('git status --porcelain', workspacePath);
-            // console.log("gitStatus: " + gitStatus);
 
             if (!gitStatus) {
                 vscode.window.showErrorMessage('No git repository detected.');
@@ -99,7 +98,6 @@ async function generateDetailedCommitMessage(changes, diffs) {
             3. Usa lenguaje técnico apropiado
             4. Agrupa cambios relacionados`;
 
-        // console.log("Prompt enviado a la API:", promptText);
 
         // Generate AI explanation for changes
         const aiResponse = await axios.post(
