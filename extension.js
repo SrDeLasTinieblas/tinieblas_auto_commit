@@ -87,26 +87,38 @@ function classifyChanges(status) {
     return changes;
 }
 
+async function getDiffsForModifiedFiles(modifiedFiles, cwd) {
+    const diffs = {};
+    for (const file of modifiedFiles) {
+        const diffCommand = `git diff -- ${file}`;
+        try {
+            const diffOutput = await runGitCommand(diffCommand, cwd);
+            diffs[file] = diffOutput;
+        } catch (error) {
+            console.error(`Error fetching diff for ${file}: ${error}`);
+            diffs[file] = 'Error obteniendo diff';
+        }
+    }
+    return diffs;
+}
 
 
-async function generateDetailedCommitMessage(changes) {
-    // console.log('Archivos a considerar:', changes);  // Verifica los archivos que se están procesando
-
+async function generateDetailedCommitMessage(changes, workspacePath) {
     try {
+        const diffs = await getDiffsForModifiedFiles(changes.modified, workspacePath);
+        
         const apiKey = vscode.workspace.getConfiguration().get('tinieblasautocommit.apiKey');
         if (!apiKey) {
             vscode.window.showErrorMessage('Por favor, configura tu clave API en la configuración de la extensión.');
             return { shortMessage: 'Actualización de proyecto', detailedMessage: 'Cambios generales en el proyecto.' };
         }
 
-        // Combine all changed files
         const allChangedFiles = [
             ...changes.added,
             ...changes.modified,
             ...changes.deleted
         ];
 
-        // Determine primary change type and focus files
         const changeTypes = [
             ...changes.added.map(() => 'add'),
             ...changes.modified.map(() => 'update'),
@@ -114,31 +126,30 @@ async function generateDetailedCommitMessage(changes) {
         ];
         const primaryChangeType = getMostFrequentChangeType(changeTypes);
 
-        // Get top 2-3 most significant files
         const focusFiles = getMostSignificantFiles(allChangedFiles);
-
-        // Determine change category
         const changeCategory = getChangeCategory(focusFiles);
-
-        // Generate short message
         const emoji = getEmojiForChangeType(primaryChangeType);
         const shortMessage = `${emoji} ${changeCategory}: ${focusFiles.join(', ')}`;
 
-        // Generate detailed message
-        const detailedMessage = await generateDetailedDescription(changes, focusFiles, changeCategory);
+        const diffSummary = changes.modified.map(file => 
+            `### ${file}\n\`\`\`diff\n${diffs[file]}\n\`\`\``
+        ).join('\n');
 
-        return { 
-            shortMessage: shortMessage.slice(0, 72), // Limit to reasonable length
-            detailedMessage: detailedMessage 
+        const detailedMessage = `Cambios detallados:\n${diffSummary}\n\nCategoría: ${changeCategory}`;
+
+        return {
+            shortMessage: shortMessage.slice(0, 72),
+            detailedMessage: detailedMessage
         };
     } catch (error) {
         console.error('Commit message generation error:', error);
-        return { 
-            shortMessage: '🛠️ Actualización de proyecto', 
-            detailedMessage: 'Se realizaron modificaciones generales en el proyecto.' 
+        return {
+            shortMessage: '🛠️ Actualización de proyecto',
+            detailedMessage: 'Se realizaron modificaciones generales en el proyecto.'
         };
     }
 }
+
 
 function getMostSignificantFiles(files) {
     // Filter out common, less interesting files
