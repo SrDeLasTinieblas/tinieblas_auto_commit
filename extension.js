@@ -135,6 +135,8 @@ async function generateDetailedCommitMessage(changes, workspacePath) {
             `### ${file}\n\`\`\`diff\n${diffs[file]}\n\`\`\``
         ).join('\n');
 
+        console.log('Resumen de cambios:', diffSummary);  // Muestra el resumen de los cambios
+
         const detailedMessage = `Cambios detallados:\n${diffSummary}\n\nCategoría: ${changeCategory}`;
 
         return {
