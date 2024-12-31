@@ -3,7 +3,7 @@
   "displayName": "Auto-Commit-AI",
   "publisher": "Tinieblas",
   "description": "Una extensión de Visual Studio Code que utiliza inteligencia artificial para generar automáticamente mensajes de commit. Simplifica el proceso de commit al generar descripciones precisas y relevantes para tus cambios de código, mejorando la productividad y consistencia en tu flujo de trabajo de desarrollo.",
-  "version": "1.0.5",  
+  "version": "1.0.6",  
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.95.0"
