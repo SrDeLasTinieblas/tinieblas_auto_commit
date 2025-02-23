@@ -85,7 +85,6 @@ async function createCommit(changes, workspacePath) {
     // 3.3: Create commit
     await runGitCommand(`git add .`, workspacePath);
     await runGitCommand(`git commit -m "${shortMessage}" -m "${detailedMessage}"`, workspacePath);
-    console.log('Detailed Message:', detailedMessage);
 
     vscode.window.showInformationMessage(MESSAGES.COMMIT_SUCCESS);
 }
@@ -98,7 +97,18 @@ async function getDiffsForModifiedFiles(modifiedFiles, cwd) {
     const diffs = {};
     for (const file of modifiedFiles) {
         try {
-            diffs[file] = await runGitCommand(`git diff -- "${file}"`, cwd);
+            // console.log(`Fetching diff for ${file}`);
+            // Obtener el diff del archivo
+            const diff = await runGitCommand(`git diff --staged -- "${file}"`, cwd);
+            
+            // Si no hay cambios en el archivo, obtener el diff sin --staged
+            if (!diff) {
+                diffs[file] = await runGitCommand(`git diff -- "${file}"`, cwd);
+            } else {
+                diffs[file] = diff;
+            }
+
+            // console.log(`Diff for ${file}:`, diffs[file]); // Depuración
         } catch (error) {
             console.error(`Error fetching diff for ${file}:`, error);
             diffs[file] = 'Error obtaining diff';
@@ -122,13 +132,13 @@ async function generateDetailedCommitMessage(changes, diffs) {
 
         // 5.2: Prepare commit data
         const { shortMessage, changeAnalysis } = prepareCommitData(changes, diffs);
-        console.log('Commit data:', shortMessage, changeAnalysis);
 
         // 5.3: Generate AI explanation
         const aiExplanation = await getAIExplanation(changeAnalysis, apiKey);
+        console.log('AI explanation:', aiExplanation);
 
         // 5.4: Format final message
-        return formatCommitMessage(shortMessage, aiExplanation, changes, diffs);
+        return formatCommitMessage(shortMessage, aiExplanation);
     } catch (error) {
         console.error('Commit message generation error:', error);
         return getDefaultCommitMessage();
@@ -204,7 +214,7 @@ function formatFileWithStatus(file, status) {
 
 // Main function to prepare commit data
 function prepareCommitData(changes, diffs) {
-    // Create an array of files with their status
+    // Crear un array de archivos con su estado
     const filesWithStatus = [
         ...changes.added.map(file => ({ file, status: 'add' })),
         ...changes.modified.map(file => ({ file, status: 'update' })),
@@ -216,17 +226,29 @@ function prepareCommitData(changes, diffs) {
         const fileName = path.basename(file); // Extraer solo el nombre del archivo
         return formatFileWithStatus(fileName, status); // Aplicar el icono
     });
-    
+
+    // Obtener el tipo de cambio más frecuente
     const changeTypes = filesWithStatus.map(({ status }) => status);
     const primaryChangeType = getMostFrequentChangeType(changeTypes);
+
+    // Obtener la categoría del cambio
     const focusFiles = getMostSignificantFiles(allChangedFiles);
     const changeCategory = getChangeCategory(focusFiles);
+
+    // Obtener el emoji para el tipo de cambio principal
     const emoji = getEmojiForChangeType(primaryChangeType);
-    
-    // Format the short message with status icons for each file
+
+    // Formatear el mensaje corto
     const shortMessage = `${emoji} ${changeCategory}: ${allChangedFiles.join(', ')}`;
-    const changeAnalysis = generateChangeAnalysis(diffs);
-    console.log('Short Message:', shortMessage);
+
+    // Preparar el análisis de cambios para la IA
+    const changeAnalysis = Object.entries(diffs)
+        .map(([file, diff]) => {
+            const changes = parseDiff(diff);
+            return `File: ${file}\nChanges:\n${changes}`;
+        })
+        .join('\n\n');
+
     return { shortMessage, changeAnalysis };
 }
 
@@ -293,16 +315,17 @@ module.exports = {
  * Handles AI-related operations for commit message generation
  */
 async function getAIExplanation(changeAnalysis, apiKey) {
-    const promptText = `Analiza estos cambios de código y genera un resumen conciso explicando el propósito de cada modificación:
+    const promptText = `Analiza estos cambios de código y genera un resumen conciso en un solo párrafo, explicando el propósito de las modificaciones. Limita el resumen a 500 caracteres.
 
     ${changeAnalysis}
 
     Por favor:
-    1. Explica el propósito de cada cambio
-    2. Sé específico pero conciso
-    3. Usa lenguaje técnico apropiado
-    4. Agrupa cambios relacionados`;
-
+    1. Explica el propósito de los cambios de manera clara y concisa.
+    2. Agrupa cambios relacionados.
+    3. No incluyas detalles irrelevantes o triviales.
+    4. Limita el resumen a un solo párrafo.
+    `;
+    
     try {
         const aiResponse = await axios.post(
             CONFIG.API_ENDPOINT + '?key=' + apiKey,
@@ -327,19 +350,16 @@ async function getAIExplanation(changeAnalysis, apiKey) {
  * Step 8: Commit Message Formatting
  * Functions for formatting and organizing commit messages
  */
-function formatCommitMessage(shortMessage, aiExplanation, changes, diffs) {
-    const detailedMessage = `${
-        changes.modified.map(file => 
-            `### ${file}\n\`\`\`diff\n${diffs[file]}\n\`\`\``
-        ).join('\n')
-    }`;
+function formatCommitMessage(shortMessage, aiExplanation) {
+    // Limitar el resumen a 1000 caracteres (ajusta según sea necesario)
+    const maxLength = 1000;
+    const truncatedExplanation = aiExplanation.slice(0, maxLength);
 
     return {
         shortMessage: shortMessage.slice(0, 72),
-        detailedMessage
+        detailedMessage: truncatedExplanation
     };
 }
-
 /**
  * Step 9: Change Analysis Functions
  * Functions for analyzing and categorizing changes
@@ -377,10 +397,12 @@ function getEmojiForChangeType(type) {
  */
 function parseDiff(diff) {
     if (!diff) return 'No hay cambios disponibles';
-    
+
     const lines = diff.split('\n');
+    let added = 0;
+    let removed = 0;
     let changes = [];
-    
+
     for (const line of lines) {
         // Ignorar líneas de metadata de git
         if (line.startsWith('diff --git') || 
@@ -389,18 +411,26 @@ function parseDiff(diff) {
             line.startsWith('---')) {
             continue;
         }
-        
-        // Procesar líneas de cambios
+
+        // Contar líneas añadidas y eliminadas
         if (line.startsWith('+') && !line.startsWith('+++')) {
-            const content = line.substring(1).trim();
-            if (content) changes.push(`Añadido: ${content}`);
+            added++;
+            changes.push(`+ ${line.substring(1).trim()}`);
         } else if (line.startsWith('-') && !line.startsWith('---')) {
-            const content = line.substring(1).trim();
-            if (content) changes.push(`Eliminado: ${content}`);
+            removed++;
+            changes.push(`- ${line.substring(1).trim()}`);
         }
     }
-    
-    return changes.length > 0 ? changes.join('\n') : 'No se detectaron cambios específicos';
+
+    // Crear un resumen conciso
+    if (added === 0 && removed === 0) {
+        return 'No se detectaron cambios específicos';
+    }
+
+    const summary = `+${added} -${removed}`;
+    const details = changes.slice(0, 5).join('\n'); // Mostrar solo las primeras 5 líneas de cambios
+
+    return `${summary}\n${details}`;
 }
 
 
